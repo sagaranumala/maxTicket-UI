@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+//future use for route protection
 export function proxy(req: NextRequest) {
   const token = req.cookies.get("auth_token")?.value;
 

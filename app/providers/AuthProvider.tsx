@@ -2,15 +2,13 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/services/api"; // Axios instance with withCredentials: true
+import { api } from "@/services/api";
 
-// ----------------- Types -----------------
 interface User {
   userId: string;
-  id?: number;
-  name?: string;
   email: string;
   role?: "user" | "admin";
+  name?: string;
   phone?: string;
 }
 
@@ -23,7 +21,6 @@ interface AuthContextType {
   isAdmin: boolean;
 }
 
-// ----------------- Context -----------------
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
@@ -33,94 +30,91 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
 });
 
-// ----------------- Provider -----------------
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ----------------- Fetch User -----------------
-  const fetchUser = async () => {
-    try {
-      console.log("🔵 Fetching user from /auth/me...");
-      const res = await api.get("/auth/me");
-      console.log("🟢 /auth/me response:", res.status, res.data);
+  // Load user data on mount
+  useEffect(() => {
+    initializeAuth();
+  }, []);
 
+  const initializeAuth = async () => {
+    try {
+      // First, try to get from localStorage for immediate UI
+      const cached = localStorage.getItem("user");
+      const cachedUser = cached ? JSON.parse(cached) : null;
+      
+      setUser(cachedUser); // Set cached user immediately
+
+      // Then verify with backend
+      const res = await api.get("/auth/me");
+      
       if (res.status === 200 && res.data.user) {
+        // Backend confirmed user is valid
         setUser(res.data.user);
-        console.log("✅ User set:", res.data.user);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
       } else {
+        // Backend says user is not valid
         setUser(null);
-        console.log("⚠️ No user returned from /auth/me");
+        localStorage.removeItem("user");
       }
-    } catch (err: any) {
-      console.log("🔥 /auth/me error:", err.response?.data || err.message);
-      setUser(null);
+    } catch (error) {
+      // API call failed, keep cached user but mark as potentially stale
+      console.warn("Auth verification failed, using cached data:", error);
+      
+      // If we have cached user, keep it but be aware it might be stale
+      // If no cached user, clear everything
+      const cached = localStorage.getItem("user");
+      if (!cached) {
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchUser();
-  }, []);
-
-  // ----------------- Login -----------------
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      console.log("🔵 Logging in:", email);
-      const res = await api.post(
-        "/auth/login",
-        { email, password },
-        { withCredentials: true }
-      );
-
-      console.log("🟢 Login response:", res.status, res.data);
+      const res = await api.post("/auth/login", { email, password }, { withCredentials: true });
 
       if (res.status === 200 && res.data.user) {
         setUser(res.data.user);
-        router.push("/");
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        router.push("/"); // Redirect to home after successful login
       }
-    } catch (err: any) {
-      console.log("🔥 Login error:", err.response?.data || err.message);
-      setUser(null);
-      throw err; // optional: to show toast in login form
+    } catch (error) {
+      throw error; // Re-throw for the login form to handle
     } finally {
       setLoading(false);
     }
   };
 
-  // ----------------- Register -----------------
   const register = async (name: string, email: string, password: string, phone?: string) => {
     setLoading(true);
     try {
-      console.log("🔵 Registering user:", email);
       const res = await api.post("/auth/register", { name, email, password, phone });
-      console.log("🟢 Register response:", res.status, res.data);
-
-      if (res.status === 201 && res.data.userId) {
-        // Auto-login after registration
-        await login(email, password);
+      if (res.status === 201) {
+        await login(email, password); // Auto-login after registration
       }
-    } catch (err: any) {
-      console.log("🔥 Register error:", err.response?.data || err.message);
-      throw err;
-    } finally {
+    } catch (error) {
       setLoading(false);
+      throw error;
     }
   };
 
-  // ----------------- Logout -----------------
   const logout = async () => {
+    setLoading(true);
     try {
-      console.log("🔴 Logging out...");
-      await api.post("/auth/logout", {}, { withCredentials: true });
-      console.log("✅ Logged out on server");
-    } catch (err) {
-      console.log("⚠️ Logout error:", err);
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.error("Logout error:", error);
     } finally {
       setUser(null);
+      localStorage.removeItem("user");
+      setLoading(false);
       router.push("/auth/login");
     }
   };
@@ -128,13 +122,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = user?.role === "admin";
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        isAdmin,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
-// ----------------- Hook -----------------
 export function useAuth() {
   return useContext(AuthContext);
 }
