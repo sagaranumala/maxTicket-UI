@@ -35,41 +35,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user data on mount
+  // Initialize auth on mount
   useEffect(() => {
     initializeAuth();
   }, []);
 
   const initializeAuth = async () => {
     try {
-      // First, try to get from localStorage for immediate UI
+      // Step 1: Check localStorage for cached user for instant UI
       const cached = localStorage.getItem("user");
-      const cachedUser = cached ? JSON.parse(cached) : null;
-      
-      setUser(cachedUser); // Set cached user immediately
+      if (cached) setUser(JSON.parse(cached));
 
-      // Then verify with backend
+      // Step 2: Verify user with backend
       const res = await api.get("/auth/me");
-      
       if (res.status === 200 && res.data.user) {
-        // Backend confirmed user is valid
         setUser(res.data.user);
         localStorage.setItem("user", JSON.stringify(res.data.user));
       } else {
-        // Backend says user is not valid
         setUser(null);
         localStorage.removeItem("user");
       }
-    } catch (error) {
-      // API call failed, keep cached user but mark as potentially stale
-      console.warn("Auth verification failed, using cached data:", error);
-      
-      // If we have cached user, keep it but be aware it might be stale
-      // If no cached user, clear everything
-      const cached = localStorage.getItem("user");
-      if (!cached) {
-        setUser(null);
-      }
+    } catch (err) {
+      // Keep cached user if backend call fails
+      console.warn("Auth verification failed:", err);
+      if (!localStorage.getItem("user")) setUser(null);
     } finally {
       setLoading(false);
     }
@@ -79,14 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const res = await api.post("/auth/login", { email, password }, { withCredentials: true });
-
       if (res.status === 200 && res.data.user) {
         setUser(res.data.user);
         localStorage.setItem("user", JSON.stringify(res.data.user));
-        router.push("/"); // Redirect to home after successful login
       }
-    } catch (error) {
-      throw error; // Re-throw for the login form to handle
     } finally {
       setLoading(false);
     }
@@ -97,20 +82,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await api.post("/auth/register", { name, email, password, phone });
       if (res.status === 201) {
-        await login(email, password); // Auto-login after registration
+        await login(email, password);
       }
-    } catch (error) {
+    } finally {
       setLoading(false);
-      throw error;
     }
   };
 
   const logout = async () => {
     setLoading(true);
     try {
-      await api.post("/auth/logout");
-    } catch (error) {
-      console.error("Logout error:", error);
+      await api.post("/auth/logout", {}, { withCredentials: true });
+    } catch (err) {
+      console.error("Logout failed:", err);
     } finally {
       setUser(null);
       localStorage.removeItem("user");
@@ -122,16 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = user?.role === "admin";
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        register,
-        logout,
-        isAdmin,
-      }}
-    >
+    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );
