@@ -5,6 +5,7 @@ import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import { api } from "@/services/api";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function Register() {
   const router = useRouter();
@@ -25,9 +26,7 @@ export default function Register() {
 
       if (res.status === 201) {
         toast.success("Registration successful! Redirecting...");
-        setTimeout(() => {
-          router.push("/"); // redirect to home/dashboard
-        }, 1500);
+        router.push("/"); 
       } else {
         toast.error(res.data.error || "Registration failed");
       }
@@ -70,14 +69,12 @@ export default function Register() {
           </button>
         </form>
 
+        {/* ✅ Improved Login Link */}
         <p className="text-center mt-4 text-gray-600">
           Already have an account?{" "}
-          <button
-            onClick={() => router.push("/auth/login")}
-            className="text-purple-600 font-semibold underline"
-          >
+          <Link href="/auth/login" className="text-purple-600 font-semibold hover:underline">
             Login
-          </button>
+          </Link>
         </p>
       </div>
     </div>

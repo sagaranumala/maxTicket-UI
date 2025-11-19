@@ -38,11 +38,11 @@ export default function Protected({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ✅ Redirect if not logged in
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/auth/login");
-    }
-  }, [loading, user, router]);
+  // useEffect(() => {
+  //   if (!loading && !user) {
+  //     router.replace("/auth/login");
+  //   }
+  // }, [loading, user, router]);
 
   if (loading) {
     return (

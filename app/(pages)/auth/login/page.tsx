@@ -5,6 +5,7 @@ import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import { api } from "@/services/api";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function Login() {
   const router = useRouter();
@@ -21,14 +22,12 @@ export default function Login() {
 
       if (res.status === 200 && res.data.user) {
         toast.success("Login successful! Redirecting...");
-        setTimeout(() => router.push("/"), 1000);
+        router.push("/");
       } else {
-        // Show backend error message
         toast.error(res.data?.error || "Login failed");
       }
     } catch (err: any) {
-      // ✅ Handle network errors & backend 400/401
-      if (err.response && err.response.data && err.response.data.error) {
+      if (err.response?.data?.error) {
         toast.error(err.response.data.error);
       } else {
         toast.error("Network error or server not reachable");
@@ -42,8 +41,10 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-blue-100">
       <ToastContainer position="top-right" autoClose={3000} />
+
       <form onSubmit={login} className="bg-white p-8 rounded shadow w-96 space-y-4">
         <h2 className="text-2xl font-bold mb-4">Login</h2>
+
         <input
           type="email"
           placeholder="Email"
@@ -52,6 +53,7 @@ export default function Login() {
           required
           className="w-full p-3 border rounded"
         />
+
         <input
           type="password"
           placeholder="Password"
@@ -60,6 +62,7 @@ export default function Login() {
           required
           className="w-full p-3 border rounded"
         />
+
         <button
           type="submit"
           disabled={loading}
@@ -67,6 +70,14 @@ export default function Login() {
         >
           {loading ? "Logging in..." : "Login"}
         </button>
+
+        {/* 👇 Added Register Link */}
+        <p className="text-center text-sm text-gray-600">
+          Don't have an account?{" "}
+          <Link href="/auth/register" className="text-blue-600 font-semibold hover:underline">
+            Register
+          </Link>
+        </p>
       </form>
     </div>
   );
