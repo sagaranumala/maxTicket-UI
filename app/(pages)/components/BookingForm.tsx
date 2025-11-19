@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { BookingData } from "../type";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Cookies from "js-cookie"; // ✅ import js-cookie
+import { useAuth } from "@/app/providers/AuthProvider"; // ✅ import context
 
 interface Event {
   id?: number;
@@ -22,6 +22,7 @@ interface Props {
 
 export default function BookingForm({ event }: Props) {
   const router = useRouter();
+  const { user } = useAuth(); // ✅ get user from context
 
   const totalSeats = Number(event.totalSeats) || 0;
   const seatsBooked = Number(event.seatsBooked) || 0;
@@ -45,6 +46,12 @@ export default function BookingForm({ event }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!user) {
+      toast.warning("Please login before booking tickets");
+      router.push("/auth/login");
+      return;
+    }
+
     if (availableSeats <= 0) {
       toast.error("No seats available for this event");
       return;
@@ -52,21 +59,13 @@ export default function BookingForm({ event }: Props) {
 
     const clampedSeats = Math.max(minSeats, Math.min(seats, maxSeats));
 
-    // ✅ Get userId from cookie
-    const userId = Cookies.get("userId");
-    if (!userId) {
-      toast.warning("Please login before booking tickets");
-      router.push("/auth/login");
-      return;
-    }
-
     try {
       setLoading(true);
       await createBooking({
         eventId: event.eventId,
         seats: clampedSeats,
         phone,
-        userId,
+        userId: user.userId, // ✅ get userId from context
       } as BookingData);
 
       toast.success("Booking successful!");
