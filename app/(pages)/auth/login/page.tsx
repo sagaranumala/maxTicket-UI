@@ -5,76 +5,69 @@ import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import { api } from "@/services/api";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie"; // ✅ import js-cookie
 
 export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
       const res = await api.post("/auth/login", { email, password }, { withCredentials: true });
-      const data = res.data;
 
-      if (res.status === 200) {
-        // 🌟 Store userId in cookie
-        if (data.user && data.user.userId) {
-          console.log("Setting userId cookie:", data.user.userId);
-          Cookies.set("userId", data.user.userId, { expires: 7 }); // expires in 7 days
-        }
-
+      if (res.status === 200 && res.data.user) {
         toast.success("Login successful! Redirecting...");
-        setTimeout(() => {
-          router.push("/"); // redirect to home/dashboard
-        }, 1500);
+        setTimeout(() => router.push("/"), 1000);
       } else {
-        toast.error(data.error || "Invalid email or password");
+        // Show backend error message
+        toast.error(res.data?.error || "Login failed");
       }
     } catch (err: any) {
-      console.error(err);
-      toast.error(err.response?.data?.error || "Network error or server not reachable");
+      // ✅ Handle network errors & backend 400/401
+      if (err.response && err.response.data && err.response.data.error) {
+        toast.error(err.response.data.error);
+      } else {
+        toast.error("Network error or server not reachable");
+      }
+      console.error("[Login] Error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-100 to-purple-200">
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
-
-      <div className="bg-white/70 backdrop-blur-lg p-8 rounded-2xl shadow-xl w-96">
-        <h2 className="text-3xl font-bold text-center mb-6 text-blue-600">Welcome Back</h2>
-
-        <form onSubmit={login} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-
-          <button className="w-full p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition">
-            Login
-          </button>
-        </form>
-
-        <p className="text-center mt-4 text-gray-600">
-          Don’t have an account?{" "}
-          <a href="/auth/register" className="text-blue-600 font-semibold">Register</a>
-        </p>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-blue-100">
+      <ToastContainer position="top-right" autoClose={3000} />
+      <form onSubmit={login} className="bg-white p-8 rounded shadow w-96 space-y-4">
+        <h2 className="text-2xl font-bold mb-4">Login</h2>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full p-3 border rounded"
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          className="w-full p-3 border rounded"
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className={`w-full p-3 rounded text-white ${loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"}`}
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
+      </form>
     </div>
   );
 }

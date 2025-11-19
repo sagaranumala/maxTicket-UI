@@ -5,18 +5,15 @@ import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import { api } from "@/services/api";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie"; // ✅ import js-cookie
 
 export default function Register() {
   const router = useRouter();
-
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
     password: ""
   });
-
   const [loading, setLoading] = useState(false);
 
   const register = async (e: React.FormEvent) => {
@@ -24,21 +21,15 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const res = await api.post("/auth/register", form);
-      const data = res.data;
+      const res = await api.post("/auth/register", form, { withCredentials: true });
 
       if (res.status === 201) {
-        // 🌟 Store userId in cookie
-        if (data.userId) {
-          Cookies.set("userId", data.userId, { expires: 7 }); // cookie expires in 7 days
-        }
-
         toast.success("Registration successful! Redirecting...");
         setTimeout(() => {
-          router.push("/"); // redirect to home page
+          router.push("/"); // redirect to home/dashboard
         }, 1500);
       } else {
-        toast.error(data.error || "Registration failed");
+        toast.error(res.data.error || "Registration failed");
       }
     } catch (err: any) {
       console.error(err);
@@ -53,9 +44,7 @@ export default function Register() {
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
       <div className="bg-white/70 backdrop-blur-lg p-8 rounded-2xl shadow-xl w-96">
-        <h2 className="text-3xl font-bold text-center mb-6 text-purple-600">
-          Create Account
-        </h2>
+        <h2 className="text-3xl font-bold text-center mb-6 text-purple-600">Create Account</h2>
 
         <form onSubmit={register} className="space-y-4">
           {Object.keys(form).map((key) => (

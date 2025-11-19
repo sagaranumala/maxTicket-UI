@@ -35,46 +35,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Verify session on mount using HTTP-only cookie
+  // verify session on mount
   useEffect(() => {
     const verifyUser = async () => {
-      console.log("[AuthProvider] 🔹 Verifying user via /auth/me...");
       try {
         const res = await api.get("/auth/me", { withCredentials: true });
-        if (res.status === 200 && res.data.user) {
-          console.log("[AuthProvider] 🔹 User verified:", res.data.user);
-          setUser(res.data.user);
-        } else {
-          console.warn("[AuthProvider] ⚠️ No valid user found.");
-          setUser(null);
-        }
-      } catch (err) {
-        console.error("[AuthProvider] ❌ /auth/me failed:", err);
+        if (res.status === 200 && res.data.user) setUser(res.data.user);
+        else setUser(null);
+      } catch {
         setUser(null);
       } finally {
         setLoading(false);
       }
     };
-
     verifyUser();
   }, []);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const res = await api.post(
-        "/auth/login",
-        { email, password },
-        { withCredentials: true } // ✅ must include cookie from server
-      );
-      if (res.status === 200 && res.data.user) {
-        console.log("[AuthProvider] 🔹 Login success:", res.data.user);
-        setUser(res.data.user);
-      }
+      const res = await api.post("/auth/login", { email, password }, { withCredentials: true });
+      if (res.status === 200 && res.data.user) setUser(res.data.user);
     } catch (err) {
-      console.error("[AuthProvider] ❌ Login failed:", err);
       setUser(null);
-      throw err; // bubble up for UI
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -83,12 +67,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (name: string, email: string, password: string, phone?: string) => {
     setLoading(true);
     try {
-      const res = await api.post("/auth/register", { name, email, password, phone });
+      const res = await api.post("/auth/register", { name, email, password, phone }, { withCredentials: true });
       if (res.status === 201) {
-        await login(email, password); // auto-login
+        const verifyRes = await api.get("/auth/me", { withCredentials: true });
+        if (verifyRes.status === 200) setUser(verifyRes.data.user);
       }
     } catch (err) {
-      console.error("[AuthProvider] ❌ Registration failed:", err);
       throw err;
     } finally {
       setLoading(false);
@@ -99,11 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       await api.post("/auth/logout", {}, { withCredentials: true });
-      console.log("[AuthProvider] 🔹 Logged out successfully");
       setUser(null);
       router.push("/auth/login");
-    } catch (err) {
-      console.error("[AuthProvider] ❌ Logout failed:", err);
     } finally {
       setLoading(false);
     }
