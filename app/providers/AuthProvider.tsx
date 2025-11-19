@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, ReactNode, useState } from "react";
+import { createContext, useContext, ReactNode, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/services/api";
 
@@ -32,17 +32,25 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+
+  // ✅ Initialize user from sessionStorage
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window !== "undefined") {
+      const storedUser = sessionStorage.getItem("user");
+      return storedUser ? JSON.parse(storedUser) : null;
+    }
+    return null;
+  });
+
   const [loading, setLoading] = useState(false);
 
-  // 🔹 LOGIN — sets user from backend response
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
       const res = await api.post("/auth/login", { email, password }, { withCredentials: true });
-
       if (res.status === 200 && res.data.user) {
-        setUser(res.data.user);   // <-- set here ONLY
+        setUser(res.data.user);
+        sessionStorage.setItem("user", JSON.stringify(res.data.user)); // ✅ persist in session
       }
     } catch (err) {
       setUser(null);
@@ -52,14 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // 🔹 REGISTER — sets user from backend response
   const register = async (name: string, email: string, password: string, phone?: string) => {
     setLoading(true);
     try {
       const res = await api.post("/auth/register", { name, email, password, phone }, { withCredentials: true });
-
       if (res.status === 201 && res.data.user) {
-        setUser(res.data.user);   // <-- set here ONLY
+        setUser(res.data.user);
+        sessionStorage.setItem("user", JSON.stringify(res.data.user)); // ✅ persist in session
       }
     } catch (err) {
       throw err;
@@ -68,11 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // 🔹 LOGOUT — clears user
   const logout = async () => {
     setLoading(true);
     try {
       setUser(null);
+      sessionStorage.removeItem("user"); // ✅ remove from session
       router.push("/auth/login");
     } finally {
       setLoading(false);
