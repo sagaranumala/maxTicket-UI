@@ -20,11 +20,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(email, password);   // <-- CONTEXT LOGIN (sets user)
+      await login(email, password);
       toast.success("Login successful! Redirecting...");
       router.push("/");
+      return;
     } catch (err: any) {
-      toast.error(err.response?.data?.error || "Login failed");
+      toast.error(err?.response?.data?.error || "Login failed");
       console.error("[Login Page Error]:", err);
     } finally {
       setLoading(false);
