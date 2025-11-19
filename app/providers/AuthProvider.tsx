@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, ReactNode, useState, useEffect } from "react";
+import { createContext, useContext, ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/services/api";
 
@@ -23,7 +23,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  loading: true,
+  loading: false,
   login: async () => {},
   register: async () => {},
   logout: async () => {},
@@ -33,29 +33,17 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // verify session on mount
-  useEffect(() => {
-    const verifyUser = async () => {
-      try {
-        const res = await api.get("/auth/me", { withCredentials: true });
-        if (res.status === 200 && res.data.user) setUser(res.data.user);
-        else setUser(null);
-      } catch {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    verifyUser();
-  }, []);
-
+  // 🔹 LOGIN — sets user from backend response
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
       const res = await api.post("/auth/login", { email, password }, { withCredentials: true });
-      if (res.status === 200 && res.data.user) setUser(res.data.user);
+
+      if (res.status === 200 && res.data.user) {
+        setUser(res.data.user);   // <-- set here ONLY
+      }
     } catch (err) {
       setUser(null);
       throw err;
@@ -64,13 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // 🔹 REGISTER — sets user from backend response
   const register = async (name: string, email: string, password: string, phone?: string) => {
     setLoading(true);
     try {
       const res = await api.post("/auth/register", { name, email, password, phone }, { withCredentials: true });
-      if (res.status === 201) {
-        const verifyRes = await api.get("/auth/me", { withCredentials: true });
-        if (verifyRes.status === 200) setUser(verifyRes.data.user);
+
+      if (res.status === 201 && res.data.user) {
+        setUser(res.data.user);   // <-- set here ONLY
       }
     } catch (err) {
       throw err;
@@ -79,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // 🔹 LOGOUT — clears user
   const logout = async () => {
     setLoading(true);
     try {
