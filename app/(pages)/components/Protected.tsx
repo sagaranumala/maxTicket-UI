@@ -4,22 +4,18 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
 
-interface ProtectedProps {
-  children: React.ReactNode;
-}
-
-export default function Protected({ children }: ProtectedProps) {
+export default function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Redirect if not logged in after loading
+  // ✅ Redirect if not logged in after loading
   useEffect(() => {
     if (!loading && !user) {
-      router.replace("/auth/login"); // Use replace to avoid back navigation issues
+      console.warn("[Protected] ⚠️ User not logged in. Redirecting...");
+      router.replace("/auth/login");
     }
   }, [loading, user, router]);
 
-  // Loading screen while checking auth
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -28,9 +24,7 @@ export default function Protected({ children }: ProtectedProps) {
     );
   }
 
-  // Block access if no user
-  if (!user) return null;
+  if (!user) return null; // wait for redirect
 
-  // Render protected content
   return <>{children}</>;
 }

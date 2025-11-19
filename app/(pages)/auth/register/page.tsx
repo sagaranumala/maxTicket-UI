@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
-import { api } from "@/services/api"; // axios instance
+import { api } from "@/services/api";
 import { useRouter } from "next/navigation";
+import Cookies from "js-cookie"; // ✅ import js-cookie
 
 export default function Register() {
   const router = useRouter();
@@ -27,14 +28,14 @@ export default function Register() {
       const data = res.data;
 
       if (res.status === 201) {
-        // 🌟 Store userId in localStorage
+        // 🌟 Store userId in cookie
         if (data.userId) {
-          localStorage.setItem("userId", data.userId);
+          Cookies.set("userId", data.userId, { expires: 7 }); // cookie expires in 7 days
         }
 
         toast.success("Registration successful! Redirecting...");
         setTimeout(() => {
-          router.push("/"); // go to home page
+          router.push("/"); // redirect to home page
         }, 1500);
       } else {
         toast.error(data.error || "Registration failed");
@@ -50,7 +51,7 @@ export default function Register() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-200 to-pink-200">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
-      
+
       <div className="bg-white/70 backdrop-blur-lg p-8 rounded-2xl shadow-xl w-96">
         <h2 className="text-3xl font-bold text-center mb-6 text-purple-600">
           Create Account

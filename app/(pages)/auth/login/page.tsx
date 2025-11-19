@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
-import { api } from "@/services/api"; // import axios instance
-import { useRouter } from "next/navigation"; // import router
+import { api } from "@/services/api";
+import { useRouter } from "next/navigation";
+import Cookies from "js-cookie"; // ✅ import js-cookie
 
 export default function Login() {
-  const router = useRouter(); // initialize router
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -15,18 +16,19 @@ export default function Login() {
     e.preventDefault();
 
     try {
-      const res = await api.post("/auth/login", { email, password });
+      const res = await api.post("/auth/login", { email, password }, { withCredentials: true });
       const data = res.data;
 
       if (res.status === 200) {
-        // 🌟 Store userId in localStorage
+        // 🌟 Store userId in cookie
         if (data.user && data.user.userId) {
-          localStorage.setItem("userId", data.user.userId);
+          console.log("Setting userId cookie:", data.user.userId);
+          Cookies.set("userId", data.user.userId, { expires: 7 }); // expires in 7 days
         }
 
         toast.success("Login successful! Redirecting...");
         setTimeout(() => {
-          router.push("/");
+          router.push("/"); // redirect to home/dashboard
         }, 1500);
       } else {
         toast.error(data.error || "Invalid email or password");

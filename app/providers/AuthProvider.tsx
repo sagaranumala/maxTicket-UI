@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, ReactNode, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/services/api";
 
@@ -17,7 +17,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, phone?: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAdmin: boolean;
 }
 
@@ -26,7 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   login: async () => {},
   register: async () => {},
-  logout: () => {},
+  logout: async () => {},
   isAdmin: false,
 });
 
@@ -35,43 +35,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize auth on mount
+  // ✅ Verify session on mount using HTTP-only cookie
   useEffect(() => {
-    initializeAuth();
-  }, []);
-
-  const initializeAuth = async () => {
-    try {
-      // Step 1: Check localStorage for cached user for instant UI
-      const cached = localStorage.getItem("user");
-      if (cached) setUser(JSON.parse(cached));
-
-      // Step 2: Verify user with backend
-      const res = await api.get("/auth/me");
-      if (res.status === 200 && res.data.user) {
-        setUser(res.data.user);
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-      } else {
+    const verifyUser = async () => {
+      console.log("[AuthProvider] 🔹 Verifying user via /auth/me...");
+      try {
+        const res = await api.get("/auth/me", { withCredentials: true });
+        if (res.status === 200 && res.data.user) {
+          console.log("[AuthProvider] 🔹 User verified:", res.data.user);
+          setUser(res.data.user);
+        } else {
+          console.warn("[AuthProvider] ⚠️ No valid user found.");
+          setUser(null);
+        }
+      } catch (err) {
+        console.error("[AuthProvider] ❌ /auth/me failed:", err);
         setUser(null);
-        localStorage.removeItem("user");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      // Keep cached user if backend call fails
-      console.warn("Auth verification failed:", err);
-      if (!localStorage.getItem("user")) setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    verifyUser();
+  }, []);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const res = await api.post("/auth/login", { email, password }, { withCredentials: true });
+      const res = await api.post(
+        "/auth/login",
+        { email, password },
+        { withCredentials: true } // ✅ must include cookie from server
+      );
       if (res.status === 200 && res.data.user) {
+        console.log("[AuthProvider] 🔹 Login success:", res.data.user);
         setUser(res.data.user);
-        localStorage.setItem("user", JSON.stringify(res.data.user));
       }
+    } catch (err) {
+      console.error("[AuthProvider] ❌ Login failed:", err);
+      setUser(null);
+      throw err; // bubble up for UI
     } finally {
       setLoading(false);
     }
@@ -82,8 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await api.post("/auth/register", { name, email, password, phone });
       if (res.status === 201) {
-        await login(email, password);
+        await login(email, password); // auto-login
       }
+    } catch (err) {
+      console.error("[AuthProvider] ❌ Registration failed:", err);
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -93,13 +99,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       await api.post("/auth/logout", {}, { withCredentials: true });
-    } catch (err) {
-      console.error("Logout failed:", err);
-    } finally {
+      console.log("[AuthProvider] 🔹 Logged out successfully");
       setUser(null);
-      localStorage.removeItem("user");
-      setLoading(false);
       router.push("/auth/login");
+    } catch (err) {
+      console.error("[AuthProvider] ❌ Logout failed:", err);
+    } finally {
+      setLoading(false);
     }
   };
 

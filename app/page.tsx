@@ -4,8 +4,8 @@ import Protected from "./(pages)/components/Protected";
 
 export default function EventsPage() {
   return (
-    <Protected>
+    <div>
       <Events />
-    </Protected>
+    </div>
   );
 }

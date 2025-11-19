@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BookingData } from "../type";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Cookies from "js-cookie"; // ✅ import js-cookie
 
 interface Event {
   id?: number;
@@ -24,7 +25,6 @@ export default function BookingForm({ event }: Props) {
 
   const totalSeats = Number(event.totalSeats) || 0;
   const seatsBooked = Number(event.seatsBooked) || 0;
-
   const availableSeats = Math.max(totalSeats - seatsBooked, 0);
   const maxSeats = Math.min(5, availableSeats); // max 5 per booking
   const minSeats = 1;
@@ -52,8 +52,8 @@ export default function BookingForm({ event }: Props) {
 
     const clampedSeats = Math.max(minSeats, Math.min(seats, maxSeats));
 
-    // Get userId from localStorage
-    const userId = localStorage.getItem("userId");
+    // ✅ Get userId from cookie
+    const userId = Cookies.get("userId");
     if (!userId) {
       toast.warning("Please login before booking tickets");
       router.push("/auth/login");
@@ -66,7 +66,7 @@ export default function BookingForm({ event }: Props) {
         eventId: event.eventId,
         seats: clampedSeats,
         phone,
-        userId, // send userId
+        userId,
       } as BookingData);
 
       toast.success("Booking successful!");
@@ -87,12 +87,10 @@ export default function BookingForm({ event }: Props) {
           onSubmit={handleSubmit}
           className="w-full max-w-lg bg-white rounded-2xl shadow-xl p-8 space-y-6 border border-gray-100"
         >
-          {/* Title */}
           <h2 className="text-3xl font-extrabold text-gray-800 text-center mb-6">
             {event.title}
           </h2>
 
-          {/* Seats Selector */}
           <div className="flex flex-col items-center gap-3">
             <div className="flex items-center gap-2 bg-gray-50 rounded-full border border-gray-200 shadow-inner px-3 py-1">
               <button
@@ -127,7 +125,6 @@ export default function BookingForm({ event }: Props) {
             </p>
           </div>
 
-          {/* Phone Input */}
           <div>
             <input
               type="text"
@@ -138,14 +135,14 @@ export default function BookingForm({ event }: Props) {
             />
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={availableSeats <= 0 || loading}
-            className={`w-full py-3 rounded-xl font-semibold transition ${availableSeats <= 0 || loading
+            className={`w-full py-3 rounded-xl font-semibold transition ${
+              availableSeats <= 0 || loading
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-green-500 text-white hover:bg-green-600 shadow-lg"
-              }`}
+            }`}
           >
             {loading ? "Booking..." : "Confirm Booking"}
           </button>
