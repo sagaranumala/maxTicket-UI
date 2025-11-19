@@ -3,36 +3,29 @@
 import { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
-import { api } from "@/services/api";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/app/providers/AuthProvider";
 
 export default function Login() {
   const router = useRouter();
+  const { login } = useAuth();    // <-- get login function from context
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const login = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const res = await api.post("/auth/login", { email, password }, { withCredentials: true });
-
-      if (res.status === 200 && res.data.user) {
-        toast.success("Login successful! Redirecting...");
-        router.push("/");
-      } else {
-        toast.error(res.data?.error || "Login failed");
-      }
+      await login(email, password);   // <-- CONTEXT LOGIN (sets user)
+      toast.success("Login successful! Redirecting...");
+      router.push("/");
     } catch (err: any) {
-      if (err.response?.data?.error) {
-        toast.error(err.response.data.error);
-      } else {
-        toast.error("Network error or server not reachable");
-      }
-      console.error("[Login] Error:", err);
+      toast.error(err.response?.data?.error || "Login failed");
+      console.error("[Login Page Error]:", err);
     } finally {
       setLoading(false);
     }
@@ -42,7 +35,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-blue-100">
       <ToastContainer position="top-right" autoClose={3000} />
 
-      <form onSubmit={login} className="bg-white p-8 rounded shadow w-96 space-y-4">
+      <form onSubmit={handleLogin} className="bg-white p-8 rounded shadow w-96 space-y-4">
         <h2 className="text-2xl font-bold mb-4">Login</h2>
 
         <input
@@ -66,12 +59,13 @@ export default function Login() {
         <button
           type="submit"
           disabled={loading}
-          className={`w-full p-3 rounded text-white ${loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"}`}
+          className={`w-full p-3 rounded text-white ${
+            loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+          }`}
         >
           {loading ? "Logging in..." : "Login"}
         </button>
 
-        {/* 👇 Added Register Link */}
         <p className="text-center text-sm text-gray-600">
           Don't have an account?{" "}
           <Link href="/auth/register" className="text-blue-600 font-semibold hover:underline">

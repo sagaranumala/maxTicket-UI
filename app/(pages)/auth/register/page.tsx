@@ -2,37 +2,36 @@
 
 import { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
-import 'react-toastify/dist/ReactToastify.css';
-import { api } from "@/services/api";
+import "react-toastify/dist/ReactToastify.css";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/app/providers/AuthProvider";
+
 
 export default function Register() {
   const router = useRouter();
+  const { register } = useAuth();  // <-- get register function from context
+
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
-    password: ""
+    password: "",
   });
+
   const [loading, setLoading] = useState(false);
 
-  const register = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const res = await api.post("/auth/register", form, { withCredentials: true });
-
-      if (res.status === 201) {
-        toast.success("Registration successful! Redirecting...");
-        router.push("/"); 
-      } else {
-        toast.error(res.data.error || "Registration failed");
-      }
+      await register(form.name, form.email, form.password, form.phone);
+      toast.success("Registration successful! Redirecting...");
+      router.push("/");  
     } catch (err: any) {
-      console.error(err);
-      toast.error(err.response?.data?.error || "Something went wrong!");
+      toast.error(err.response?.data?.error || "Registration failed");
+      console.error("[Register Error]:", err);
     } finally {
       setLoading(false);
     }
@@ -43,13 +42,15 @@ export default function Register() {
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
       <div className="bg-white/70 backdrop-blur-lg p-8 rounded-2xl shadow-xl w-96">
-        <h2 className="text-3xl font-bold text-center mb-6 text-purple-600">Create Account</h2>
+        <h2 className="text-3xl font-bold text-center mb-6 text-purple-600">
+          Create Account
+        </h2>
 
-        <form onSubmit={register} className="space-y-4">
+        <form onSubmit={handleRegister} className="space-y-4">
           {Object.keys(form).map((key) => (
             <input
               key={key}
-              type={key === "password" ? "password" : "text"}
+              type={key === "password" ? "password" : key === "email" ? "email" : "text"}
               placeholder={key.charAt(0).toUpperCase() + key.slice(1)}
               className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-400 outline-none"
               value={(form as any)[key]}
@@ -60,16 +61,17 @@ export default function Register() {
 
           <button
             type="submit"
-            className={`w-full p-3 rounded-xl text-white transition ${
-              loading ? "bg-gray-400 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700"
-            }`}
             disabled={loading}
+            className={`w-full p-3 rounded-xl text-white transition ${
+              loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-purple-600 hover:bg-purple-700"
+            }`}
           >
             {loading ? "Registering..." : "Register"}
           </button>
         </form>
 
-        {/* ✅ Improved Login Link */}
         <p className="text-center mt-4 text-gray-600">
           Already have an account?{" "}
           <Link href="/auth/login" className="text-purple-600 font-semibold hover:underline">
